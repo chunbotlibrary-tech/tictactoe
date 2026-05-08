@@ -5,7 +5,7 @@ import confetti from 'canvas-confetti';
 import { Lobby } from './components/Lobby';
 import { Board } from './components/Board';
 import { useGame } from './hooks/useGame';
-import { WINNING_COMBINATIONS } from './constants';
+import { BOARD_SIZE, WIN_CONDITION } from './constants';
 import { isConfigValid } from './lib/firebase';
 
 export default function App() {
@@ -82,11 +82,34 @@ export default function App() {
   };
 
   const winningCombo = useMemo(() => {
-    if (gameState?.status !== 'won') return null;
-    return WINNING_COMBINATIONS.find(combo => {
-      const symbols = combo.map(idx => gameState.board[idx]);
-      return symbols[0] !== '' && symbols.every(s => s === symbols[0]);
-    }) || null;
+    if (gameState?.status !== 'won' || !gameState.board) return null;
+    const board = gameState.board;
+    const symbol = gameState.winner;
+    if (!symbol) return null;
+
+    // We need to find which cells make up the winning line
+    // For simplicity, we can re-run the win check logic but return the indices
+    for (let i = 0; i < board.length; i++) {
+      if (board[i] !== symbol) continue;
+
+      const row = Math.floor(i / BOARD_SIZE);
+      const col = i % BOARD_SIZE;
+
+      const directions = [[1, 0], [0, 1], [1, 1], [1, -1]];
+      for (const [dr, dc] of directions) {
+        const combo = [i];
+        for (let step = 1; step < WIN_CONDITION; step++) {
+          const r = row + dr * step;
+          const c = col + dc * step;
+          const idx = r * BOARD_SIZE + c;
+          if (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[idx] === symbol) {
+            combo.push(idx);
+          } else break;
+        }
+        if (combo.length >= WIN_CONDITION) return combo;
+      }
+    }
+    return null;
   }, [gameState]);
 
   const copyRoomId = () => {
@@ -189,19 +212,31 @@ export default function App() {
                   className="text-center font-bold tracking-wide"
                 >
                   {gameState?.status === 'waiting' && (
-                    <div className="flex items-center gap-3 text-slate-400">
-                      <Users className="w-5 h-5 animate-pulse" />
-                      Waiting for opponent...
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="flex items-center gap-3 text-slate-400">
+                        <Users className="w-5 h-5 animate-pulse" />
+                        កំពុងរង់ចាំដៃគូ... (Waiting for opponent)
+                      </div>
+                      <p className="text-xs text-slate-500 font-normal">ផ្ញើលេខកូដបន្ទប់ទៅកាន់មិត្តភក្តិដើម្បីលេង</p>
                     </div>
                   )}
                   {gameState?.status === 'active' && (
-                    <span className={gameState.turn === 'X' ? 'text-sky-400' : 'text-pink-400'}>
-                      {gameState.turn === playerSymbol ? "IT'S YOUR TURN" : `WAITING FOR ${gameState.turn}...`}
-                    </span>
+                    <div className="flex flex-col items-center gap-1">
+                      {playerSymbol ? (
+                        <span className={gameState.turn === 'X' ? 'text-sky-400' : 'text-pink-400'}>
+                          {gameState.turn === playerSymbol ? "ដល់វេនអ្នកហើយ (IT'S YOUR TURN)" : `រង់ចាំវេន ${gameState.turn} (WAITING FOR ${gameState.turn}...)`}
+                        </span>
+                      ) : (
+                        <span className="text-slate-500 italic">WATCHING AS SPECTATOR (RE-JOIN TO PLAY)</span>
+                      )}
+                      {gameState.lastMoveAt && (
+                        <span className="text-[10px] text-slate-600 uppercase">ដៃគូបានចូលរួម និងអាចលេងបានហើយ!</span>
+                      )}
+                    </div>
                   )}
                   {gameState?.status === 'won' && (
                     <span className="text-yellow-400 text-2xl uppercase tracking-widest">
-                      {gameState.winner === userId ? "✨ YOU WIN! ✨" : "OPPONENT WINS"}
+                      {gameState.winner === playerSymbol ? "✨ អ្នកឈ្នះហើយ! (YOU WIN!) ✨" : "ដៃគូជាអ្នកឈ្នះ (OPPONENT WINS)"}
                     </span>
                   )}
                   {gameState?.status === 'draw' && (
@@ -215,7 +250,7 @@ export default function App() {
             <div className="relative group">
               <div className="absolute -inset-4 bg-gradient-to-r from-sky-500/20 to-pink-500/20 rounded-[3rem] blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               <Board 
-                board={gameState?.board || Array(9).fill('')} 
+                board={gameState?.board || Array(BOARD_SIZE * BOARD_SIZE).fill('')} 
                 onSquareClick={makeMove}
                 disabled={gameState?.status !== 'active' || gameState.turn !== playerSymbol}
                 winningCombo={winningCombo}

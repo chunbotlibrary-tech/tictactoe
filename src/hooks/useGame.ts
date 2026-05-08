@@ -11,7 +11,7 @@ import {
 } from 'firebase/database';
 import { rtdb, auth } from '../lib/firebase';
 import { signInAnonymously } from 'firebase/auth';
-import { WINNING_COMBINATIONS, GameState, GameStatus, PlayerSymbol } from '../constants';
+import { BOARD_SIZE, WIN_CONDITION, GameState, GameStatus, PlayerSymbol } from '../constants';
 
 enum OperationType {
   CREATE = 'create',
@@ -28,6 +28,11 @@ export function useGame(roomId: string | null) {
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Debugging identity
+  useEffect(() => {
+    console.log("Current Identity Info:", { userId, playerSymbol, roomId });
+  }, [userId, playerSymbol, roomId]);
 
   const handleError = useCallback((err: any, operation: OperationType, path: string | null) => {
     let message = err?.message || String(err);
@@ -94,12 +99,24 @@ export function useGame(roomId: string | null) {
     const unsub = onValue(roomRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val() as GameState;
+        console.log("Game State Update:", { status: data.status, turn: data.turn, players: data.players });
         setGameState(data);
         
         // Determine player symbol
         if (userId) {
-          if (data.players.X === userId) setPlayerSymbol('X');
-          else if (data.players.O === userId) setPlayerSymbol('O');
+          if (data.players.X === userId) {
+            console.log("Identified as Player X");
+            setPlayerSymbol('X');
+          } else if (data.players.O === userId) {
+            console.log("Identified as Player O");
+            setPlayerSymbol('O');
+          } else {
+            console.warn("User ID not found in room players:", userId);
+            setPlayerSymbol(null);
+          }
+        } else {
+          console.log("No userId available yet for symbol detection");
+          setPlayerSymbol(null);
         }
       } else {
         setError("Room not found");
@@ -121,7 +138,7 @@ export function useGame(roomId: string | null) {
     const roomRef = ref(rtdb, `rooms/${newRoomId}`);
     
     const initialState: GameState = {
-      board: Array(9).fill(''),
+      board: Array(BOARD_SIZE * BOARD_SIZE).fill(''),
       turn: 'X',
       status: 'waiting',
       players: { X: currentUserId },
@@ -175,23 +192,73 @@ export function useGame(roomId: string | null) {
   }, [ensureAuth, handleError]);
 
   const makeMove = useCallback(async (index: number) => {
-    if (!roomId || !gameState || !playerSymbol || !userId) return;
-    if (gameState.status !== 'active' || gameState.turn !== playerSymbol || gameState.board[index] !== '') return;
+    if (!roomId || !gameState || !playerSymbol || !userId) {
+      console.log("Move rejected: missing core info", { roomId, hasState: !!gameState, playerSymbol, userId });
+      return;
+    }
+    if (gameState.status !== 'active') {
+      console.log("Move rejected: game not active", gameState.status);
+      return;
+    }
+    if (gameState.turn !== playerSymbol) {
+      console.log("Move rejected: not your turn", { turn: gameState.turn, playerSymbol });
+      return;
+    }
+    if (gameState.board[index] !== '') {
+      console.log("Move rejected: square already taken", index);
+      return;
+    }
 
     const newBoard = [...gameState.board];
     newBoard[index] = playerSymbol;
 
     let newStatus: GameStatus = 'active';
-    let newWinner: string | null = null;
+    let newWinner: PlayerSymbol | null = null;
     let newScores = { ...gameState.scores };
 
-    const isWin = WINNING_COMBINATIONS.some(combo => {
-      return combo.every(idx => newBoard[idx] === playerSymbol);
-    });
+    const checkWin = (board: (PlayerSymbol | '')[], idx: number) => {
+      const symbol = board[idx];
+      if (!symbol) return false;
 
-    if (isWin) {
+      const row = Math.floor(idx / BOARD_SIZE);
+      const col = idx % BOARD_SIZE;
+
+      const directions = [
+        [1, 0],  // Horizontal
+        [0, 1],  // Vertical
+        [1, 1],  // Diagonal \
+        [1, -1]  // Diagonal /
+      ];
+
+      for (const [dr, dc] of directions) {
+        let count = 1;
+
+        // Check one direction
+        for (let i = 1; i < WIN_CONDITION; i++) {
+          const r = row + dr * i;
+          const c = col + dc * i;
+          if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) break;
+          if (board[r * BOARD_SIZE + c] === symbol) count++;
+          else break;
+        }
+
+        // Check opposite direction
+        for (let i = 1; i < WIN_CONDITION; i++) {
+          const r = row - dr * i;
+          const c = col - dc * i;
+          if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) break;
+          if (board[r * BOARD_SIZE + c] === symbol) count++;
+          else break;
+        }
+
+        if (count >= WIN_CONDITION) return true;
+      }
+      return false;
+    };
+
+    if (checkWin(newBoard, index)) {
       newStatus = 'won';
-      newWinner = userId;
+      newWinner = playerSymbol;
       newScores[playerSymbol]++;
     } else if (newBoard.every(cell => cell !== '')) {
       newStatus = 'draw';
@@ -218,7 +285,7 @@ export function useGame(roomId: string | null) {
     
     try {
       await update(ref(rtdb, `rooms/${roomId}`), {
-        board: Array(9).fill(''),
+        board: Array(BOARD_SIZE * BOARD_SIZE).fill(''),
         turn: 'X',
         status: 'active',
         winner: null,

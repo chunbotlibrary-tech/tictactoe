@@ -1,42 +1,43 @@
 import { motion } from 'motion/react';
-import { PlayerSymbol } from '../constants';
+import { BOARD_SIZE, PlayerSymbol } from '../constants';
 
 interface SquareProps {
   value: PlayerSymbol | '';
   onClick: () => void;
   isWinningSquare?: boolean;
   disabled?: boolean;
-  key?: any;
+  index: number;
 }
 
-export function Square({ value, onClick, isWinningSquare, disabled }: SquareProps) {
+export function Square({ value, onClick, isWinningSquare, disabled, index }: SquareProps) {
   return (
     <motion.button
-      whileHover={!disabled && value === '' ? { scale: 0.98, backgroundColor: 'rgba(255,255,255,0.05)' } : {}}
+      whileHover={!disabled && value === '' ? { scale: 1.05, backgroundColor: 'rgba(255,255,255,0.05)' } : {}}
       whileTap={!disabled && value === '' ? { scale: 0.95 } : {}}
       onClick={onClick}
       disabled={disabled || value !== ''}
       className={`
-        h-24 w-24 sm:h-32 sm:w-32 border border-slate-800 rounded-xl flex items-center justify-center text-5xl sm:text-6xl font-bold transition-colors
-        ${isWinningSquare ? 'bg-slate-800/50' : 'bg-slate-900/40'}
+        h-7 w-7 sm:h-9 sm:w-9 border border-slate-800/50 rounded-sm flex items-center justify-center text-sm sm:text-base font-bold transition-all
+        ${isWinningSquare ? 'bg-yellow-500/20 border-yellow-500/50 scale-110 z-10' : 'bg-slate-900/60'}
         ${disabled ? 'cursor-default' : 'cursor-pointer'}
+        ${value === '' && !disabled ? 'hover:border-slate-600' : ''}
       `}
-      id={`square-${value}`}
+      id={`square-${index}`}
     >
       {value === 'X' && (
         <motion.span
-          initial={{ scale: 0, rotate: -45 }}
-          animate={{ scale: 1, rotate: 0 }}
-          className="text-sky-400 neon-text-x"
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="text-sky-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)] leading-none"
         >
           X
         </motion.span>
       )}
       {value === 'O' && (
         <motion.span
-          initial={{ scale: 0, rotate: 45 }}
-          animate={{ scale: 1, rotate: 0 }}
-          className="text-pink-400 neon-text-o"
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="text-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.5)] leading-none"
         >
           O
         </motion.span>
@@ -54,10 +55,15 @@ interface BoardProps {
 
 export function Board({ board, onSquareClick, disabled, winningCombo }: BoardProps) {
   return (
-    <div className="grid grid-cols-3 gap-3 p-3 bg-slate-900/20 rounded-2xl border border-slate-800/50" id="game-board">
+    <div 
+      className="grid gap-1 p-2 bg-slate-900/40 rounded-xl border border-slate-800 shadow-inner" 
+      style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, minmax(0, 1fr))` }}
+      id="game-board"
+    >
       {board.map((value, i) => (
         <Square
           key={i}
+          index={i}
           value={value}
           onClick={() => onSquareClick(i)}
           disabled={disabled}
