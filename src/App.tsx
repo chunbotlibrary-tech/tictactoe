@@ -162,14 +162,15 @@ export default function App() {
               >
                 <LogOut className="w-5 h-5" />
               </button>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-500 text-xs font-bold uppercase tracking-widest">Room Code</span>
-                  <button onClick={copyRoomId} className="hover:text-sky-400 transition-colors">
-                    <Copy className="w-3 h-3" />
-                  </button>
+              <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
+                <h1 className="text-4xl sm:text-5xl font-black tracking-tighter italic" id="app-title">
+                  NEON<span className="text-sky-400 font-black">MULTIPLAYER</span>
+                </h1>
+                <div className="flex items-center gap-2 px-3 py-1 bg-slate-800/40 rounded-full border border-slate-700/50 text-[10px] mt-2">
+                   <span className="text-slate-400 font-medium tracking-wider">GOMOKU 15x15</span>
+                   <span className="text-slate-700">|</span>
+                   <span className="text-sky-400/80 font-bold uppercase tracking-tight">5 in a row wins</span>
                 </div>
-                <h2 className="text-2xl font-mono font-bold tracking-tighter">{roomId}</h2>
               </div>
             </div>
 
@@ -222,15 +223,19 @@ export default function App() {
                   )}
                   {gameState?.status === 'active' && (
                     <div className="flex flex-col items-center gap-1">
+                      <div className="flex flex-col items-center mb-2 px-4 py-1 bg-slate-800/50 rounded-full border border-slate-700">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-tighter">Your Role</span>
+                        <span className={`text-lg font-bold ${playerSymbol === 'X' ? 'text-sky-400' : 'text-pink-400'}`}>
+                          {playerSymbol === 'X' ? "អ្នកគឺជាកីឡាករ X" : playerSymbol === 'O' ? "អ្នកគឺជាកីឡាករ O" : "អ្នកជាអ្នកទស្សនា"}
+                        </span>
+                      </div>
+                      
                       {playerSymbol ? (
                         <span className={gameState.turn === 'X' ? 'text-sky-400' : 'text-pink-400'}>
                           {gameState.turn === playerSymbol ? "ដល់វេនអ្នកហើយ (IT'S YOUR TURN)" : `រង់ចាំវេន ${gameState.turn} (WAITING FOR ${gameState.turn}...)`}
                         </span>
                       ) : (
                         <span className="text-slate-500 italic">WATCHING AS SPECTATOR (RE-JOIN TO PLAY)</span>
-                      )}
-                      {gameState.lastMoveAt && (
-                        <span className="text-[10px] text-slate-600 uppercase">ដៃគូបានចូលរួម និងអាចលេងបានហើយ!</span>
                       )}
                     </div>
                   )}

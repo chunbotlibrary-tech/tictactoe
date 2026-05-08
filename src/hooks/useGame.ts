@@ -25,14 +25,17 @@ enum OperationType {
 export function useGame(roomId: string | null) {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [playerSymbol, setPlayerSymbol] = useState<PlayerSymbol | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(auth.currentUser?.uid || null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Debugging identity
+  // Sync userId when auth state changes
   useEffect(() => {
-    console.log("Current Identity Info:", { userId, playerSymbol, roomId });
-  }, [userId, playerSymbol, roomId]);
+    const unsub = auth.onAuthStateChanged(user => {
+      setUserId(user?.uid || null);
+    });
+    return unsub;
+  }, []);
 
   const handleError = useCallback((err: any, operation: OperationType, path: string | null) => {
     let message = err?.message || String(err);
@@ -99,27 +102,17 @@ export function useGame(roomId: string | null) {
     const unsub = onValue(roomRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val() as GameState;
-        console.log("Game State Update:", { status: data.status, turn: data.turn, players: data.players });
         setGameState(data);
         
-        // Determine player symbol
-        if (userId) {
-          if (data.players.X === userId) {
-            console.log("Identified as Player X");
-            setPlayerSymbol('X');
-          } else if (data.players.O === userId) {
-            console.log("Identified as Player O");
-            setPlayerSymbol('O');
-          } else {
-            console.warn("User ID not found in room players:", userId);
-            setPlayerSymbol(null);
-          }
-        } else {
-          console.log("No userId available yet for symbol detection");
-          setPlayerSymbol(null);
+        // Use live auth uid for symbol detection to avoid stale state issues
+        const currentUid = auth.currentUser?.uid || userId;
+        if (currentUid && data.players) {
+          if (data.players.X === currentUid) setPlayerSymbol('X');
+          else if (data.players.O === currentUid) setPlayerSymbol('O');
+          else setPlayerSymbol(null);
         }
       } else {
-        setError("Room not found");
+        setError("រកមិនឃើញបន្ទប់លេង (Room not found)");
       }
       setLoading(false);
     }, (err) => {
@@ -192,22 +185,23 @@ export function useGame(roomId: string | null) {
   }, [ensureAuth, handleError]);
 
   const makeMove = useCallback(async (index: number) => {
-    if (!roomId || !gameState || !playerSymbol || !userId) {
-      console.log("Move rejected: missing core info", { roomId, hasState: !!gameState, playerSymbol, userId });
+    const currentUid = auth.currentUser?.uid;
+    if (!roomId || !gameState || !playerSymbol || !currentUid) {
+      console.warn("Cannot move: Missing data", { roomId, playerSymbol, currentUid });
       return;
     }
+
     if (gameState.status !== 'active') {
-      console.log("Move rejected: game not active", gameState.status);
+      console.log("Cannot move: Game is", gameState.status);
       return;
     }
+
     if (gameState.turn !== playerSymbol) {
-      console.log("Move rejected: not your turn", { turn: gameState.turn, playerSymbol });
+      console.log("Cannot move: It is turn", gameState.turn, "but you are", playerSymbol);
       return;
     }
-    if (gameState.board[index] !== '') {
-      console.log("Move rejected: square already taken", index);
-      return;
-    }
+
+    if (gameState.board[index] !== '') return;
 
     const newBoard = [...gameState.board];
     newBoard[index] = playerSymbol;
@@ -278,7 +272,7 @@ export function useGame(roomId: string | null) {
     } catch (err) {
       handleError(err, OperationType.UPDATE, `rooms/${roomId}`);
     }
-  }, [roomId, gameState, playerSymbol, userId, handleError]);
+  }, [roomId, gameState, playerSymbol, handleError]);
 
   const resetGame = useCallback(async () => {
     if (!roomId || !gameState) return;
