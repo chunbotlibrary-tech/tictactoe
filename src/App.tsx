@@ -120,7 +120,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col p-4 sm:p-8 max-w-4xl mx-auto w-full">
+    <div className="min-h-screen flex flex-col p-4 sm:p-6 max-w-5xl mx-auto w-full bg-slate-950 text-slate-200 selection:bg-sky-500/30">
       {/* Global Error Banner */}
       <AnimatePresence>
         {error && (
@@ -195,10 +195,17 @@ export default function App() {
           </header>
 
           {/* Main Game Area */}
-          <main className="flex-1 flex flex-col items-center justify-center gap-8">
-            {/* Score Board */}
-            {gameState && (
-              <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
+          <main className="flex-1 flex flex-col items-center justify-center gap-6 py-4">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center gap-4 py-20">
+                <RefreshCw className="w-10 h-10 text-sky-400 animate-spin" />
+                <p className="text-slate-400 font-medium animate-pulse">កំពុងភ្ជាប់ទៅកាន់បន្ទប់លេង... (Connecting...)</p>
+              </div>
+            ) : (
+              <>
+                {/* Score Board */}
+                {gameState && (
+                  <div className="grid grid-cols-2 gap-3 w-full max-w-sm mb-2">
                 <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl text-center">
                   <p className="text-slate-500 text-xs font-bold uppercase mb-1">X Wins</p>
                   <p className="text-3xl font-bold text-sky-400">{gameState.scores.X}</p>
@@ -260,7 +267,7 @@ export default function App() {
             </div>
 
             {/* Game Board */}
-            <div className="relative group">
+            <div className="relative group w-full flex justify-center items-center min-h-[300px]">
               <div className="absolute -inset-4 bg-gradient-to-r from-sky-500/20 to-pink-500/20 rounded-[3rem] blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               <Board 
                 board={gameState?.board || Array(BOARD_SIZE * BOARD_SIZE).fill('')} 
@@ -309,8 +316,10 @@ export default function App() {
                 )}
               </AnimatePresence>
             </div>
-          </main>
-        </>
+            </>
+          )}
+        </main>
+      </>
       )}
 
       <footer className="mt-auto py-6 border-t border-slate-900 flex flex-col sm:flex-row justify-between items-center text-slate-600 text-sm gap-4">
