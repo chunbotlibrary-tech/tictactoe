@@ -1,0 +1,22 @@
+{
+  "name": "ទិកតាក់តូ 🇰🇭 - ហ្គេមផ្ដើមស្នេហ៍",
+  "short_name": "ទិកតាក់តូ",
+  "description": "ហ្គេម Gomoku ១៥x១៥ លេងអនឡាញជាមួយមិត្តភក្ដិ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/566/566312.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/566/566312.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

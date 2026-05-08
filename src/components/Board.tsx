@@ -20,14 +20,13 @@ export function Square({ value, onClick, isWinningSquare, disabled, index }: Squ
   return (
     <motion.button
       type="button"
-      whileHover={(!disabled && value === '') ? { scale: 1.15, backgroundColor: 'rgba(255,255,255,0.15)', zIndex: 20 } : {}}
-      whileTap={(!disabled && value === '') ? { scale: 0.85 } : {}}
+      whileHover={(!disabled && value === '') ? { backgroundColor: 'rgba(255,255,255,0.1)', zIndex: 10 } : {}}
       onClick={handleClick}
       className={`
-        w-10 h-10 sm:w-11 sm:h-11 border border-slate-700 flex items-center justify-center font-bold transition-all relative pointer-events-auto
-        ${isWinningSquare ? 'bg-yellow-500/60 border-yellow-400 scale-110 z-10 shadow-[0_0_30px_rgba(234,179,8,0.6)]' : 'bg-slate-900/90'}
+        w-8 h-8 sm:w-10 sm:h-10 border border-slate-700/50 flex items-center justify-center font-bold transition-all relative pointer-events-auto
+        ${isWinningSquare ? 'bg-yellow-500/80 border-yellow-400 z-10' : 'bg-slate-900/95'}
         ${(disabled || value !== '') ? 'cursor-default opacity-100' : 'cursor-pointer'}
-        ${value === '' && !disabled ? 'hover:border-sky-500 hover:bg-slate-800 active:bg-slate-700' : ''}
+        ${value === '' && !disabled ? 'hover:border-sky-500 hover:bg-slate-800' : ''}
       `}
       id={`square-${index}`}
     >
