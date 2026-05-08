@@ -7,9 +7,11 @@ import { Board } from './components/Board';
 import { useGame } from './hooks/useGame';
 import { BOARD_SIZE, WIN_CONDITION } from './constants';
 import { isConfigValid } from './lib/firebase';
+import { soundService } from './services/soundService';
 
 export default function App() {
   const [roomId, setRoomId] = useState<string | null>(null);
+  const [showResultModal, setShowResultModal] = useState(false);
   const { 
     gameState, 
     playerSymbol, 
@@ -24,17 +26,32 @@ export default function App() {
     setError
   } = useGame(roomId);
 
-  // Auto-trigger confetti on win
+  // Auto-trigger confetti and sounds on win
   useEffect(() => {
-    if (gameState?.status === 'won' && gameState.winner === userId) {
-      confetti({
-        particleCount: 150,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: playerSymbol === 'X' ? ['#38bdf8', '#0ea5e9'] : ['#f472b6', '#db2777']
-      });
+    if (!gameState) return;
+
+    if (gameState.status === 'won' || gameState.status === 'draw') {
+      setShowResultModal(true);
+    } else {
+      setShowResultModal(false);
     }
-  }, [gameState?.status, gameState?.winner, userId, playerSymbol]);
+
+    if (gameState.status === 'won') {
+      if (gameState.winner === playerSymbol) {
+        soundService.playWin();
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: playerSymbol === 'X' ? ['#38bdf8', '#0ea5e9'] : ['#f472b6', '#db2777']
+        });
+      } else {
+        soundService.playLose();
+      }
+    } else if (gameState.status === 'draw') {
+      soundService.playDraw();
+    }
+  }, [gameState?.status, gameState?.winner, playerSymbol]);
 
   if (!isConfigValid) {
     return (
@@ -112,6 +129,13 @@ export default function App() {
     return null;
   }, [gameState]);
 
+  const handleMakeMove = (index: number) => {
+    if (gameState?.status === 'active' && gameState.turn === playerSymbol && gameState.board[index] === '') {
+      soundService.playMove();
+    }
+    makeMove(index);
+  };
+
   const copyRoomId = () => {
     if (roomId) {
       navigator.clipboard.writeText(roomId);
@@ -125,7 +149,7 @@ export default function App() {
     
     const winMessages = [
       "អបអរសាទរអ្នកឈ្នះសត្រូវរបស់អ្នកហើយ 🏆",
-      "ឈ្នះរហូតបាយចិត្តណាស់! 🍚🥢",
+      "ឈ្នះរហូតបាយចិត្តមាំណាស់! 🍚🥢",
       "ខ្លាំងមែនទែន! មិនមែនលេងសើចទេ 😎",
       "ឈ្នះបានសម្រេច! ដៃគូសុំចុះចាញ់ហើយ ✨"
     ];
@@ -133,7 +157,7 @@ export default function App() {
     const loseMessages = [
       "អន់ហាលេងចាញ់គេ! 🤪",
       "លេងចាញ់គេញឹកអញ្ចឹងស្រឡាញ់គេទៅបានឈ្នះ 💖",
-      "សំណាងក្រោយទៀតចុះ កុំទាន់អស់សង្ឃឹម! 💪",
+      "នៅមានសំណាងពេលក្រោយទៀត កុំទាន់អស់សង្ឃឹម! 💪",
       "បើចាញ់ញឹកពេក ទៅរៀនថែមសិនទៅ! 📚"
     ];
     
@@ -145,7 +169,7 @@ export default function App() {
   }, [gameState, playerSymbol, roomId]);
 
   return (
-    <div className="min-h-screen flex flex-col p-4 sm:p-6 w-full bg-slate-950 text-slate-200 selection:bg-sky-500/30">
+    <div className="min-h-screen flex flex-col p-2 sm:p-4 w-full bg-slate-950 text-slate-200 selection:bg-sky-500/30">
       {/* Global Error Banner */}
       <AnimatePresence>
         {error && (
@@ -177,8 +201,8 @@ export default function App() {
       ) : (
         <div className="max-w-[1400px] mx-auto w-full flex-1 flex flex-col">
           {/* Header */}
-          <header className="flex flex-col lg:flex-row justify-between items-center gap-6 mb-8">
-            <div className="flex items-center gap-4 w-full lg:w-auto">
+          <header className="flex flex-col lg:flex-row justify-between items-center gap-2 mb-4">
+            <div className="flex items-center gap-3 w-full lg:w-auto">
               <button 
                 onClick={handleLeave}
                 className="p-3 bg-slate-900 border border-slate-800 rounded-xl hover:text-pink-500 transition-colors"
@@ -188,19 +212,19 @@ export default function App() {
                 <LogOut className="w-5 h-5" />
               </button>
               <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
-                <h1 className="text-4xl sm:text-5xl font-black tracking-tighter italic" id="app-title">
-                  TicTac<span className="text-sky-400 font-black">Toe</span> 🇰🇭
+                <h1 className="text-3xl sm:text-4xl font-black tracking-tighter italic" id="app-title">
+                  ទិក<span className="text-sky-400 font-black">តាក់តូ</span> 🇰🇭
                 </h1>
-                <div className="flex items-center justify-center sm:justify-start gap-2 px-3 py-1 bg-slate-800/40 rounded-full border border-slate-700/50 text-[10px] mt-2">
+                <div className="flex items-center justify-center sm:justify-start gap-2 px-3 py-0.5 bg-slate-800/40 rounded-full border border-slate-700/50 text-[10px] mt-1">
                    <span className="text-slate-400 font-medium tracking-wider">GOMOKU 15x15</span>
                    <span className="text-slate-700">|</span>
-                   <span className="text-sky-400/80 font-bold uppercase tracking-tight">5 in a row wins</span>
+                   <span className="text-sky-400/80 font-bold uppercase tracking-tight">ផ្ដើមស្នេហ៍</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-col md:flex-row items-center gap-4 w-full lg:w-auto">
-              <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl w-full md:w-auto justify-center">
+            <div className="flex flex-col md:flex-row items-center gap-2 w-full lg:w-auto">
+              <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl w-full md:w-auto justify-center">
                 <span className="text-slate-500 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">ROOM ID:</span>
                 <span className="text-lg font-mono font-bold tracking-tighter text-white">{roomId}</span>
                 <button onClick={copyRoomId} className="ml-2 p-1 hover:text-sky-400 text-slate-500 transition-colors" title="Copy Code">
@@ -211,87 +235,78 @@ export default function App() {
               <div className="flex gap-2 bg-slate-900/50 border border-slate-800 p-1 rounded-2xl w-full md:w-auto justify-center">
                 <div className={`px-4 py-1.5 rounded-xl flex items-center gap-2 transition-all ${playerSymbol === 'X' ? 'bg-sky-500/10 border border-sky-500/20 text-sky-400' : 'opacity-40'}`}>
                   <div className="w-2 h-2 rounded-full bg-sky-500"></div>
-                  <span className="font-bold text-xs">PLAYER X</span>
+                  <span className="font-bold text-xs">អ្នកលេង X</span>
                 </div>
                 <div className={`px-4 py-1.5 rounded-xl flex items-center gap-2 transition-all ${playerSymbol === 'O' ? 'bg-pink-500/10 border border-pink-500/20 text-pink-400' : 'opacity-40'}`}>
                   <div className="w-2 h-2 rounded-full bg-pink-500"></div>
-                  <span className="font-bold text-xs">PLAYER O</span>
+                  <span className="font-bold text-xs">អ្នកលេង O</span>
                 </div>
               </div>
             </div>
           </header>
 
           {/* Main Game Area */}
-          <main className="flex-1 flex flex-col items-center justify-center gap-6 py-4">
+          <main className="flex-1 flex flex-col items-center justify-center gap-2 py-1">
             {loading ? (
-              <div className="flex flex-col items-center justify-center gap-4 py-20">
-                <RefreshCw className="w-10 h-10 text-sky-400 animate-spin" />
-                <p className="text-slate-400 font-medium animate-pulse">កំពុងភ្ជាប់... (Connecting...)</p>
+              <div className="flex flex-col items-center justify-center gap-2 py-10">
+                <RefreshCw className="w-8 h-8 text-sky-400 animate-spin" />
+                <p className="text-slate-400 text-sm font-medium animate-pulse">កំពុងភ្ជាប់...</p>
               </div>
             ) : (
               <>
                 {/* Score Board & Status */}
-                <div className="flex flex-col md:flex-row gap-6 w-full items-center justify-center mb-4">
+                <div className="flex flex-col md:flex-row gap-2 w-full items-center justify-center mb-1">
                   {gameState && (
-                    <div className="grid grid-cols-2 gap-3 w-full max-w-[300px]">
-                      <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl text-center">
-                        <p className="text-slate-500 text-[10px] font-bold uppercase mb-1">X Wins</p>
-                        <p className="text-2xl font-bold text-sky-400">{gameState.scores.X}</p>
+                    <div className="grid grid-cols-2 gap-2 w-full max-w-[200px]">
+                      <div className="bg-slate-900 border border-slate-800 p-1.5 rounded-xl text-center">
+                        <p className="text-slate-500 text-[8px] font-bold uppercase mb-0.5">X Wins</p>
+                        <p className="text-lg font-bold text-sky-400">{gameState.scores.X}</p>
                       </div>
-                      <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl text-center">
-                        <p className="text-slate-500 text-[10px] font-bold uppercase mb-1">O Wins</p>
-                        <p className="text-2xl font-bold text-pink-400">{gameState.scores.O}</p>
+                      <div className="bg-slate-900 border border-slate-800 p-1.5 rounded-xl text-center">
+                        <p className="text-slate-500 text-[8px] font-bold uppercase mb-0.5">O Wins</p>
+                        <p className="text-lg font-bold text-pink-400">{gameState.scores.O}</p>
                       </div>
                     </div>
                   )}
 
-                  <div className="min-h-[60px] flex items-center justify-center">
+                  <div className="min-h-[36px] flex items-center justify-center">
                     <AnimatePresence mode="wait">
                       <motion.div
                         key={gameState?.status + (gameState?.turn || '')}
-                        initial={{ opacity: 0, scale: 0.9 }}
+                        initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         className="text-center font-bold tracking-wide"
                       >
                         {gameState?.status === 'waiting' && (
-                          <div className="flex flex-col items-center gap-2">
-                            <div className="flex items-center gap-3 text-slate-400">
-                              <Users className="w-5 h-5 animate-pulse" />
-                              <span className="text-lg">កំពុងរង់ចាំដៃគូ...</span>
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="flex items-center gap-2 text-slate-400">
+                              <Users className="w-4 h-4 animate-pulse" />
+                              <span className="text-base text-sky-400">កំពុងរង់ចាំដៃគូ...</span>
                             </div>
                           </div>
                         )}
                         {gameState?.status === 'active' && (
-                          <div className="flex flex-col items-center gap-1">
-                            <div className="px-4 py-1.5 bg-slate-800/80 rounded-full border border-slate-700 shadow-lg mb-2">
-                              <span className={`text-sm font-bold ${playerSymbol === 'X' ? 'text-sky-400' : playerSymbol === 'O' ? 'text-pink-400' : 'text-slate-500'}`}>
-                                {playerSymbol === 'X' ? "អ្នកគឺជាកីឡាករ X" : playerSymbol === 'O' ? "អ្នកគឺជាកីឡាករ O" : "អ្នកជាអ្នកទស្សនា"}
+                          <div className="flex flex-col items-center gap-0.5">
+                            <div className="px-2 py-0.5 bg-slate-800/80 rounded-full border border-slate-700 shadow-lg mb-0.5">
+                              <span className={`text-[9px] font-bold ${playerSymbol === 'X' ? 'text-sky-400' : playerSymbol === 'O' ? 'text-pink-400' : 'text-slate-500'}`}>
+                                {playerSymbol === 'X' ? "អ្នកជាកីឡាករ X" : playerSymbol === 'O' ? "អ្នកជាកីឡាករ O" : "អ្នកជាអ្នកទស្សនា"}
                               </span>
                             </div>
                             
-                            <span className={`text-xl ${gameState.turn === 'X' ? 'text-sky-400' : 'text-pink-400'}`}>
-                              {gameState.turn === playerSymbol ? "✨ ដល់វេនអ្នកហើយ" : `រង់ចាំវេន ${gameState.turn}...`}
+                            <span className={`text-base ${gameState.turn === 'X' ? 'text-sky-400' : 'text-pink-400'}`}>
+                              {gameState.turn === playerSymbol ? "✨ ដល់វេនអ្នកលេងហើយ" : `រង់ចាំវេន ${gameState.turn}...`}
                             </span>
                           </div>
                         )}
                         {gameState?.status === 'won' && (
-                          <div className="flex flex-col items-center gap-4">
-                            <span className="text-yellow-400 text-3xl font-black uppercase tracking-widest drop-shadow-[0_0_15px_rgba(234,179,8,0.5)]">
+                          <div className="flex flex-col items-center gap-2">
+                            <span className="text-yellow-400 text-xl font-black uppercase tracking-widest drop-shadow-[0_0_15px_rgba(234,179,8,0.5)]">
                               {gameState.winner === playerSymbol ? "🏆 អ្នកឈ្នះហើយ! 🏆" : "ដៃគូជាអ្នកឈ្នះ!"}
                             </span>
-                            <motion.div 
-                              initial={{ scale: 0.8, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              className="px-6 py-4 bg-slate-900/80 border-2 border-yellow-500/30 rounded-2xl shadow-[0_0_30px_rgba(234,179,8,0.15)] max-w-xs"
-                            >
-                              <p className="text-lg font-bold text-center text-slate-200 leading-relaxed">
-                                {getMemeMessage()}
-                              </p>
-                            </motion.div>
                           </div>
                         )}
                         {gameState?.status === 'draw' && (
-                          <span className="text-slate-400 text-2xl uppercase tracking-widest">ស្មើគ្នា! (DRAW)</span>
+                          <span className="text-slate-400 text-xl uppercase tracking-widest">ស្មើគ្នា! (DRAW)</span>
                         )}
                       </motion.div>
                     </AnimatePresence>
@@ -299,27 +314,27 @@ export default function App() {
                 </div>
 
                 {/* Game Board Container */}
-                <div className="relative w-full flex justify-center items-center z-10 px-2 sm:px-6">
+                <div className="relative w-full flex justify-center items-center z-10 px-2">
                   <div className="absolute -inset-10 bg-gradient-to-r from-sky-500/5 to-pink-500/5 rounded-full blur-[100px] pointer-events-none"></div>
                   <Board 
                     board={gameState?.board || Array(BOARD_SIZE * BOARD_SIZE).fill('')} 
-                    onSquareClick={makeMove}
+                    onSquareClick={handleMakeMove}
                     disabled={gameState?.status !== 'active' || gameState.turn !== playerSymbol}
                     winningCombo={winningCombo}
                   />
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md mt-4">
+                <div className="flex flex-col sm:flex-row gap-2 w-full max-w-sm mt-1">
                   {gameState && (gameState.status === 'won' || gameState.status === 'draw') && (
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={resetGame}
-                      className="w-full py-4 px-8 bg-sky-600 hover:bg-sky-500 text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-xl"
+                      className="w-full py-2 px-4 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg text-sm"
                     >
-                      <RefreshCw className="w-5 h-5" />
-                      លេងម្ដងទៀត (Play Again)
+                      <RefreshCw className="w-4 h-4" />
+                      លេងម្ដងទៀត
                     </motion.button>
                   )}
 
@@ -328,17 +343,17 @@ export default function App() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => {
-                         const shareText = `មកលេងហ្គេម Tic Tac Toe ជាមួយខ្ញុំ: ${roomId}\n${window.location.href}`;
+                         const shareText = `មកលេងហ្គេម ទិកតាក់តូ ជាមួយខ្ញុំ!\n\nលេខកូដបន្ទប់៖ ${roomId}\nតំណភ្ជាប់៖ ${window.location.href}`;
                          if (navigator.share) {
-                           navigator.share({ title: 'Neon Gomoku', text: shareText, url: window.location.href });
+                           navigator.share({ title: 'ទិកតាក់តូ 🇰🇭', text: shareText, url: window.location.href });
                          } else {
                            copyRoomId();
                          }
                       }}
-                      className="w-full py-4 bg-slate-900 border border-slate-800 text-white rounded-2xl flex items-center justify-center gap-3 hover:bg-slate-800 transition-all font-bold"
+                      className="w-full py-2 bg-slate-900 border border-slate-800 text-white rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 transition-all font-bold text-sm"
                     >
-                      <Share2 className="w-5 h-5 text-sky-400" />
-                      អញ្ជើញមិត្តភក្តិ (Invite Friend)
+                      <Share2 className="w-4 h-4 text-sky-400" />
+                      អញ្ជើញមិត្តភក្តិ
                     </motion.button>
                   )}
                 </div>
@@ -346,7 +361,7 @@ export default function App() {
             )}
           </main>
 
-          <footer className="mt-8 py-6 border-t border-slate-900 flex flex-col sm:flex-row justify-between items-center text-slate-600 text-xs gap-4">
+          <footer className="mt-4 py-2 border-t border-slate-900 flex flex-col sm:flex-row justify-between items-center text-slate-600 text-[10px] gap-2">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-green-500 shadow-sm animate-pulse"></div>
               Server Region: Asia Southeast
@@ -360,6 +375,72 @@ export default function App() {
           </footer>
         </div>
       )}
+
+      {/* Result Modal Overlay */}
+      <AnimatePresence>
+        {showResultModal && gameState && (gameState.status === 'won' || gameState.status === 'draw') && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: 20, opacity: 0 }}
+              className="w-full max-w-sm bg-slate-900 border-2 border-slate-800 p-6 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col items-center text-center gap-6 relative overflow-hidden"
+            >
+              {/* Background Glow */}
+              <div className={`absolute -top-24 -left-24 w-48 h-48 blur-[80px] rounded-full ${gameState.status === 'won' ? (gameState.winner === 'X' ? 'bg-sky-500/30' : 'bg-pink-500/30') : 'bg-slate-500/30'}`}></div>
+              
+              <div className="relative z-10 space-y-4">
+                {gameState.status === 'won' ? (
+                  <>
+                    <h2 className="text-3xl font-black text-yellow-400 uppercase tracking-tighter italic">
+                      {gameState.winner === playerSymbol ? "Victory! 🏆" : "Defeat! 💀"}
+                    </h2>
+                    <div className="text-slate-200 font-bold text-lg">
+                      {gameState.winner === playerSymbol ? "អបអរសាទរ! អ្នកគឺជាអ្នកឈ្នះ" : "សុំទោសផង! ដៃគូរបស់អ្នកឈ្នះ"}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="text-3xl font-black text-slate-400 uppercase tracking-tighter italic">
+                      Draw! 🤝
+                    </h2>
+                    <div className="text-slate-200 font-bold text-lg">
+                      លទ្ធផលស្មើគ្នា! ព្យាយាមម្ដងទៀត
+                    </div>
+                  </>
+                )}
+
+                <div className="px-6 py-4 bg-slate-950/50 border border-slate-800 rounded-2xl">
+                  <p className="text-lg font-bold text-sky-400 leading-relaxed italic">
+                    {gameState.status === 'won' ? getMemeMessage() : "កុំអន់ចិត្តអី លេងម្ដងទៀតទៅ!"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col w-full gap-3 relative z-10">
+                <button
+                  onClick={resetGame}
+                  className="w-full py-4 bg-sky-600 hover:bg-sky-500 text-white rounded-2xl font-black flex items-center justify-center gap-3 shadow-xl transition-all active:scale-95"
+                >
+                  <RefreshCw className="w-5 h-5" />
+                  លេងម្ដងទៀត
+                </button>
+                <button
+                  onClick={() => setShowResultModal(false)}
+                  className="w-full py-3 text-slate-500 hover:text-slate-300 font-bold text-sm transition-colors"
+                >
+                  ពិនិត្យមើលក្រឡា (View Board)
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
 
   );
