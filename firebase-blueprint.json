@@ -1,0 +1,60 @@
+{
+  "entities": {
+    "Room": {
+      "title": "Room",
+      "description": "A multiplayer game room for Tic Tac Toe",
+      "type": "object",
+      "properties": {
+        "board": {
+          "type": "array",
+          "description": "3x3 game board state",
+          "items": { "type": "string" }
+        },
+        "turn": {
+          "type": "string",
+          "description": "Current player turn (X or O)"
+        },
+        "status": {
+          "type": "string",
+          "description": "Current game status",
+          "enum": ["waiting", "active", "won", "draw"]
+        },
+        "players": {
+          "type": "object",
+          "properties": {
+            "X": { "type": "string" },
+            "O": { "type": "string" }
+          },
+          "required": ["X"]
+        },
+        "winner": {
+          "type": "string",
+          "description": "Winner of the current game"
+        },
+        "scores": {
+          "type": "object",
+          "properties": {
+            "X": { "type": "number" },
+            "O": { "type": "number" }
+          },
+          "required": ["X", "O"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastMoveAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["board", "turn", "status", "players", "scores", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/rooms/{roomId}": {
+      "schema": "Room",
+      "description": "Game rooms collection"
+    }
+  }
+}

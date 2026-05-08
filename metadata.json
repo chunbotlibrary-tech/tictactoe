@@ -1,0 +1,6 @@
+{
+  "name": "Neon Multiplayer Tic Tac Toe",
+  "description": "A beautiful, real-time multiplayer Tic Tac Toe game with room codes, live sync, and dark mode aesthetics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

@@ -1,0 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-50 font-sans;
+  }
+}
+
+@layer utilities {
+  .neon-border-x {
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.5), inset 0 0 5px rgba(56, 189, 248, 0.2);
+  }
+  .neon-border-o {
+    box-shadow: 0 0 10px rgba(244, 114, 182, 0.5), inset 0 0 5px rgba(244, 114, 182, 0.2);
+  }
+  .neon-text-x {
+    text-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+  }
+  .neon-text-o {
+    text-shadow: 0 0 10px rgba(244, 114, 182, 0.8);
+  }
+}
+
