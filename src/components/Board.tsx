@@ -1,7 +1,9 @@
+import React from 'react';
 import { motion } from 'motion/react';
 import { BOARD_SIZE, PlayerSymbol } from '../constants';
 
 interface SquareProps {
+  key?: React.Key;
   value: PlayerSymbol | '';
   onClick: () => void;
   isWinningSquare?: boolean;

@@ -171,6 +171,14 @@ export default function App() {
                    <span className="text-slate-700">|</span>
                    <span className="text-sky-400/80 font-bold uppercase tracking-tight">5 in a row wins</span>
                 </div>
+                
+                <div className="flex items-center gap-2 mt-4 bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl">
+                  <span className="text-slate-500 text-xs font-bold uppercase tracking-widest">លេខកូដបន្ទប់ (Room Code):</span>
+                  <span className="text-lg font-mono font-bold tracking-tighter text-white">{roomId}</span>
+                  <button onClick={copyRoomId} className="ml-2 p-1 hover:text-sky-400 text-slate-500 transition-colors" title="Copy Code">
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
 
