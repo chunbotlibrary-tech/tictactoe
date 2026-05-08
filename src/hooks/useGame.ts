@@ -29,38 +29,57 @@ export function useGame(roomId: string | null) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const handleError = useCallback((err: unknown, operation: OperationType, path: string | null) => {
-    let message = err instanceof Error ? err.message : String(err);
+  const handleError = useCallback((err: any, operation: OperationType, path: string | null) => {
+    let message = err?.message || String(err);
+    const code = err?.code;
     
-    // Add helpful context for manual setup users
-    if (message.includes('permission-denied') || message.includes('PERMISSION_DENIED')) {
-      message = "Access Denied. Please ensure you've set your Realtime Database rules to 'true' for testing.";
-    } else if (message.includes('auth/operation-not-allowed')) {
-      message = "Auth Disabled. Please enable 'Anonymous Sign-in' in the Firebase Authentication settings.";
-    } else if (message.includes('offline')) {
-      message = "Network Error. Please check your internet or check if your API keys are correct.";
+    // Auth specific errors
+    if (code === 'auth/operation-not-allowed' || message.includes('operation-not-allowed')) {
+      message = "Critical: Anonymous Authentication is DISABLED in your Firebase Console. Go to Authentication > Sign-in method and enable 'Anonymous'.";
+    } else if (code === 'auth/invalid-api-key' || message.includes('invalid-api-key') || message.includes('API key not valid')) {
+      message = "Critical: Your Firebase API Key is invalid. Please check your configuration in lib/firebase.ts.";
+    } else if (code === 'auth/network-request-failed' || message.includes('network-request-failed')) {
+      message = "Network Error: Failed to reach Firebase Auth. check your internet connection.";
+    } else if (message.includes('permission-denied') || message.includes('PERMISSION_DENIED')) {
+      message = "Access Denied: Please check your Realtime Database Rules in the Firebase Console.";
     }
 
-    setError(`${message}`);
-    console.error('Firebase Error: ', { error: message, operation, path });
+    setError(message);
+    console.error('Firebase Error Detail:', { code, message, operation, path });
   }, []);
 
-  // Initialize Auth
+  const ensureAuth = useCallback(async () => {
+    if (auth.currentUser) return auth.currentUser.uid;
+    
+    try {
+      console.log("Ensuring authentication...");
+      const res = await signInAnonymously(auth);
+      setUserId(res.user.uid);
+      return res.user.uid;
+    } catch (err: any) {
+      handleError(err, OperationType.GET, 'auth/ensure-sign-in');
+      return null;
+    }
+  }, [handleError]);
+
+  // Initialize Auth on mount
   useEffect(() => {
+    let isMounted = true;
     const unsub = auth.onAuthStateChanged(async (user) => {
+      if (!isMounted) return;
       if (user) {
         setUserId(user.uid);
       } else {
-        try {
-          const res = await signInAnonymously(auth);
-          setUserId(res.user.uid);
-        } catch (err) {
-          handleError(err, OperationType.GET, 'auth/sign-in');
-        }
+        // Transparently try to sign in on mount
+        ensureAuth();
       }
     });
-    return unsub;
-  }, [handleError]);
+
+    return () => {
+      isMounted = false;
+      unsub();
+    };
+  }, [ensureAuth]);
 
   // Listen to Game State
   useEffect(() => {
@@ -95,10 +114,9 @@ export function useGame(roomId: string | null) {
   }, [roomId, userId, handleError]);
 
   const createRoom = useCallback(async () => {
-    if (!userId) {
-        setError("Waiting for authentication...");
-        return null;
-    }
+    const currentUserId = await ensureAuth();
+    if (!currentUserId) return null;
+
     const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase();
     const roomRef = ref(rtdb, `rooms/${newRoomId}`);
     
@@ -106,7 +124,7 @@ export function useGame(roomId: string | null) {
       board: Array(9).fill(''),
       turn: 'X',
       status: 'waiting',
-      players: { X: userId },
+      players: { X: currentUserId },
       winner: null,
       scores: { X: 0, O: 0 },
       createdAt: serverTimestamp(),
@@ -120,10 +138,12 @@ export function useGame(roomId: string | null) {
       handleError(err, OperationType.CREATE, `rooms/${newRoomId}`);
       return null;
     }
-  }, [userId, handleError]);
+  }, [ensureAuth, handleError]);
 
   const joinRoom = useCallback(async (targetRoomId: string) => {
-    if (!userId) return false;
+    const currentUserId = await ensureAuth();
+    if (!currentUserId) return false;
+
     const roomRef = ref(rtdb, `rooms/${targetRoomId}`);
     
     try {
@@ -135,7 +155,7 @@ export function useGame(roomId: string | null) {
       
       const data = snap.val() as GameState;
       
-      if (data.players.X === userId || data.players.O === userId) return true;
+      if (data.players.X === currentUserId || data.players.O === currentUserId) return true;
       
       if (data.players.O) {
         setError("Room is full");
@@ -143,7 +163,7 @@ export function useGame(roomId: string | null) {
       }
 
       await update(roomRef, {
-        'players/O': userId,
+        'players/O': currentUserId,
         status: 'active',
         lastMoveAt: serverTimestamp()
       });
@@ -152,7 +172,7 @@ export function useGame(roomId: string | null) {
       handleError(err, OperationType.UPDATE, `rooms/${targetRoomId}`);
       return false;
     }
-  }, [userId, handleError]);
+  }, [ensureAuth, handleError]);
 
   const makeMove = useCallback(async (index: number) => {
     if (!roomId || !gameState || !playerSymbol || !userId) return;
