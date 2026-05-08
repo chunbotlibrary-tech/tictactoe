@@ -32,6 +32,7 @@ export function useGame(roomId: string | null) {
   // Sync userId when auth state changes
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(user => {
+      console.log("[useGame] Auth state changed:", user?.uid);
       setUserId(user?.uid || null);
     });
     return unsub;
@@ -65,29 +66,40 @@ export function useGame(roomId: string | null) {
       setUserId(res.user.uid);
       return res.user.uid;
     } catch (err: any) {
+      console.error("Auth failed:", err);
       handleError(err, OperationType.GET, 'auth/ensure-sign-in');
+      setLoading(false); // Make sure we stop loading if auth fails
       return null;
     }
   }, [handleError]);
 
-  // Initialize Auth on mount
+  // Initialize Auth on mount if needed
   useEffect(() => {
-    let isMounted = true;
-    const unsub = auth.onAuthStateChanged(async (user) => {
-      if (!isMounted) return;
-      if (user) {
-        setUserId(user.uid);
-      } else {
-        // Transparently try to sign in on mount
-        ensureAuth();
-      }
-    });
-
-    return () => {
-      isMounted = false;
-      unsub();
-    };
+    if (!auth.currentUser) {
+      ensureAuth();
+    }
   }, [ensureAuth]);
+
+  // Sync player symbol whenever gameState or userId changes
+  useEffect(() => {
+    const currentUid = auth.currentUser?.uid || userId;
+    console.log("[useGame] Syncing player symbol:", { currentUid, hasGameState: !!gameState, players: gameState?.players });
+    if (gameState && currentUid && gameState.players) {
+      if (gameState.players.X === currentUid) {
+        console.log("[useGame] Identified as Player X");
+        setPlayerSymbol('X');
+      } else if (gameState.players.O === currentUid) {
+        console.log("[useGame] Identified as Player O");
+        setPlayerSymbol('O');
+      } else {
+        console.log("[useGame] Identified as Spectator");
+        setPlayerSymbol(null);
+      }
+    } else {
+      console.log("[useGame] Symbol sync incomplete:", { hasGameState: !!gameState, currentUid });
+      setPlayerSymbol(null);
+    }
+  }, [gameState, userId, auth.currentUser?.uid]);
 
   // Listen to Game State
   useEffect(() => {
@@ -98,30 +110,35 @@ export function useGame(roomId: string | null) {
 
     setLoading(true);
     const roomRef = ref(rtdb, `rooms/${roomId}`);
+
+    // Add a safety timeout to stop loading if connection is too slow/blocked
+    const timeoutId = setTimeout(() => {
+      setLoading(prev => {
+        if (prev) {
+          console.warn("Connection timeout - showing partial state");
+          return false;
+        }
+        return false;
+      });
+    }, 10000);
     
     const unsub = onValue(roomRef, (snapshot) => {
+      clearTimeout(timeoutId);
       if (snapshot.exists()) {
         const data = snapshot.val() as GameState;
         setGameState(data);
-        
-        // Use live auth uid for symbol detection to avoid stale state issues
-        const currentUid = auth.currentUser?.uid || userId;
-        if (currentUid && data.players) {
-          if (data.players.X === currentUid) setPlayerSymbol('X');
-          else if (data.players.O === currentUid) setPlayerSymbol('O');
-          else setPlayerSymbol(null);
-        }
       } else {
         setError("រកមិនឃើញបន្ទប់លេង (Room not found)");
       }
       setLoading(false);
     }, (err) => {
+      clearTimeout(timeoutId);
       handleError(err, OperationType.GET, `rooms/${roomId}`);
       setLoading(false);
     });
 
     return () => off(roomRef, 'value', unsub);
-  }, [roomId, userId, handleError]);
+  }, [roomId, handleError]);
 
   const createRoom = useCallback(async () => {
     const currentUserId = await ensureAuth();
@@ -185,14 +202,23 @@ export function useGame(roomId: string | null) {
   }, [ensureAuth, handleError]);
 
   const makeMove = useCallback(async (index: number) => {
-    const currentUid = auth.currentUser?.uid;
+    const currentUid = auth.currentUser?.uid || userId;
+    
+    console.log("[makeMove] Attempting move at index:", index, {
+      roomId,
+      playerSymbol,
+      currentUid,
+      gameStatus: gameState?.status,
+      gameTurn: gameState?.turn
+    });
+
     if (!roomId || !gameState || !playerSymbol || !currentUid) {
-      console.warn("Cannot move: Missing data", { roomId, playerSymbol, currentUid });
+      console.warn("Cannot move: Missing critical data", { roomId, hasGameState: !!gameState, playerSymbol, currentUid });
       return;
     }
 
     if (gameState.status !== 'active') {
-      console.log("Cannot move: Game is", gameState.status);
+      console.log("Cannot move: Game is in status", gameState.status);
       return;
     }
 
@@ -201,7 +227,10 @@ export function useGame(roomId: string | null) {
       return;
     }
 
-    if (gameState.board[index] !== '') return;
+    if (gameState.board[index] !== '') {
+      console.log("Cannot move: Cell", index, "is already taken by", gameState.board[index]);
+      return;
+    }
 
     const newBoard = [...gameState.board];
     newBoard[index] = playerSymbol;
@@ -261,6 +290,7 @@ export function useGame(roomId: string | null) {
     const nextTurn = playerSymbol === 'X' ? 'O' : 'X';
 
     try {
+      console.log("[makeMove] Updating database with new move...");
       await update(ref(rtdb, `rooms/${roomId}`), {
         board: newBoard,
         turn: nextTurn,
@@ -269,10 +299,12 @@ export function useGame(roomId: string | null) {
         scores: newScores,
         lastMoveAt: serverTimestamp()
       });
+      console.log("[makeMove] Database updated successfully.");
     } catch (err) {
+      console.error("[makeMove] Error updating database:", err);
       handleError(err, OperationType.UPDATE, `rooms/${roomId}`);
     }
-  }, [roomId, gameState, playerSymbol, handleError]);
+  }, [roomId, gameState, playerSymbol, userId, handleError]);
 
   const resetGame = useCallback(async () => {
     if (!roomId || !gameState) return;

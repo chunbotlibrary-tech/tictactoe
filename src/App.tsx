@@ -239,9 +239,9 @@ export default function App() {
                   {gameState?.status === 'active' && (
                     <div className="flex flex-col items-center gap-1">
                       <div className="flex flex-col items-center mb-2 px-4 py-1 bg-slate-800/50 rounded-full border border-slate-700">
-                        <span className="text-[10px] text-slate-400 uppercase tracking-tighter">Your Role</span>
-                        <span className={`text-lg font-bold ${playerSymbol === 'X' ? 'text-sky-400' : 'text-pink-400'}`}>
-                          {playerSymbol === 'X' ? "អ្នកគឺជាកីឡាករ X" : playerSymbol === 'O' ? "អ្នកគឺជាកីឡាករ O" : "អ្នកជាអ្នកទស្សនា"}
+                        <span className="text-[10px] text-slate-400 uppercase tracking-tighter">Your Role / តួនាទី</span>
+                        <span className={`text-lg font-bold ${playerSymbol === 'X' ? 'text-sky-400' : playerSymbol === 'O' ? 'text-pink-400' : 'text-slate-500'}`}>
+                          {playerSymbol === 'X' ? "អ្នកគឺជាកីឡាករ X" : playerSymbol === 'O' ? "អ្នកគឺជាកីឡាករ O" : userId ? "អ្នកជាអ្នកទស្សនា" : "មិនអាចភ្ជាប់ Auth បាន"}
                         </span>
                       </div>
                       
@@ -250,7 +250,12 @@ export default function App() {
                           {gameState.turn === playerSymbol ? "ដល់វេនអ្នកហើយ (IT'S YOUR TURN)" : `រង់ចាំវេន ${gameState.turn} (WAITING FOR ${gameState.turn}...)`}
                         </span>
                       ) : (
-                        <span className="text-slate-500 italic">WATCHING AS SPECTATOR (RE-JOIN TO PLAY)</span>
+                        <div className="flex flex-col items-center">
+                          <span className="text-slate-500 italic">WATCHING AS SPECTATOR (RE-JOIN TO PLAY)</span>
+                          {!userId && (
+                            <span className="text-[10px] text-red-400 mt-1">កំហុសបណ្តាញ: មិនអាចភ្ជាប់ទៅកាន់ Google Login បានទេ (Network error)</span>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
@@ -267,8 +272,8 @@ export default function App() {
             </div>
 
             {/* Game Board */}
-            <div className="relative group w-full flex justify-center items-center min-h-[300px]">
-              <div className="absolute -inset-4 bg-gradient-to-r from-sky-500/20 to-pink-500/20 rounded-[3rem] blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <div className="relative group w-full flex justify-center items-center min-h-[300px] z-10">
+              <div className="absolute -inset-4 bg-gradient-to-r from-sky-500/10 to-pink-500/10 rounded-[3rem] blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
               <Board 
                 board={gameState?.board || Array(BOARD_SIZE * BOARD_SIZE).fill('')} 
                 onSquareClick={makeMove}
