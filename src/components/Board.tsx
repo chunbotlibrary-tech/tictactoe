@@ -13,23 +13,21 @@ interface SquareProps {
 
 export function Square({ value, onClick, isWinningSquare, disabled, index }: SquareProps) {
   const handleClick = (e: React.MouseEvent) => {
-    // Explicitly stop propagation to avoid any issues with parent handlers
     e.stopPropagation();
-    console.log("[Square] Click detected", { index, value, disabled });
     onClick();
   };
 
   return (
     <motion.button
       type="button"
-      whileHover={(!disabled && value === '') ? { scale: 1.15, backgroundColor: 'rgba(255,255,255,0.12)', zIndex: 20 } : {}}
+      whileHover={(!disabled && value === '') ? { scale: 1.15, backgroundColor: 'rgba(255,255,255,0.15)', zIndex: 20 } : {}}
       whileTap={(!disabled && value === '') ? { scale: 0.85 } : {}}
       onClick={handleClick}
       className={`
-        aspect-square border border-slate-700/20 rounded-[1px] flex items-center justify-center font-bold transition-all relative pointer-events-auto
-        ${isWinningSquare ? 'bg-yellow-500/40 border-yellow-400/60 scale-110 z-10 shadow-[0_0_20px_rgba(234,179,8,0.4)]' : 'bg-slate-900'}
-        ${(disabled || value !== '') ? 'cursor-default opacity-80' : 'cursor-pointer opacity-100'}
-        ${value === '' && !disabled ? 'hover:border-sky-500/50 active:bg-slate-800' : ''}
+        w-12 h-12 sm:w-14 sm:h-14 border-2 border-slate-800/80 flex items-center justify-center font-bold transition-all relative pointer-events-auto
+        ${isWinningSquare ? 'bg-yellow-500/60 border-yellow-400 scale-110 z-10 shadow-[0_0_30px_rgba(234,179,8,0.6)]' : 'bg-slate-900'}
+        ${(disabled || value !== '') ? 'cursor-default opacity-100' : 'cursor-pointer'}
+        ${value === '' && !disabled ? 'hover:border-sky-500 hover:bg-slate-800 active:bg-slate-700' : ''}
       `}
       id={`square-${index}`}
     >
@@ -37,7 +35,7 @@ export function Square({ value, onClick, isWinningSquare, disabled, index }: Squ
         <motion.span
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="text-sky-400 drop-shadow-[0_0_4px_rgba(56,189,248,0.7)] text-[10px] sm:text-base leading-none"
+          className="text-sky-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.8)] text-xl sm:text-2xl leading-none font-bold"
         >
           X
         </motion.span>
@@ -46,7 +44,7 @@ export function Square({ value, onClick, isWinningSquare, disabled, index }: Squ
         <motion.span
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="text-pink-400 drop-shadow-[0_0_4px_rgba(244,114,182,0.7)] text-[10px] sm:text-base leading-none"
+          className="text-pink-400 drop-shadow-[0_0_8px_rgba(244,114,182,0.8)] text-xl sm:text-2xl leading-none font-bold"
         >
           O
         </motion.span>
@@ -63,36 +61,47 @@ interface BoardProps {
 }
 
 export function Board({ board, onSquareClick, disabled, winningCombo }: BoardProps) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  
   const handleCellClick = (index: number) => {
-    console.log("[Board] handleCellClick triggered", { index, disabled, boardValue: board[index] });
-    // Guard here as well for extra safety
-    if (disabled) {
-      console.log("[Board] Click ignored: Board is disabled (not your turn or game ended)");
-      return;
-    }
-    if (board[index] !== '') {
-      console.log("[Board] Click ignored: Cell already occupied");
-      return;
-    }
+    if (disabled || board[index] !== '') return;
     onSquareClick(index);
   };
 
   return (
     <div 
-      className="grid gap-[1px] bg-slate-800 p-[1px] rounded-[4px] border border-slate-700 shadow-2xl w-full max-w-[min(92vw,550px)] aspect-square overflow-hidden relative z-20 pointer-events-auto" 
-      style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, minmax(0, 1fr))` }}
-      id="game-board"
+      ref={containerRef}
+      className="w-full max-w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950 p-2 sm:p-4 shadow-2xl relative"
     >
-      {board.map((value, i) => (
-        <Square
-          key={i}
-          index={i}
-          value={value}
-          onClick={() => handleCellClick(i)}
-          disabled={disabled}
-          isWinningSquare={winningCombo?.includes(i)}
-        />
-      ))}
+      <motion.div 
+        drag
+        dragConstraints={containerRef}
+        dragElastic={0.1}
+        dragMomentum={true}
+        className="grid bg-slate-800 rounded-sm overflow-hidden relative z-20 pointer-events-auto mx-auto touch-none" 
+        style={{ 
+          gridTemplateColumns: `repeat(${BOARD_SIZE}, minmax(0, 1fr))`,
+          width: 'max-content',
+          border: '2px solid rgb(30, 41, 59)',
+          cursor: 'grab'
+        }}
+        whileTap={{ cursor: 'grabbing' }}
+        id="game-board"
+      >
+        {board.map((value, i) => (
+          <Square
+            key={i}
+            index={i}
+            value={value}
+            onClick={() => handleCellClick(i)}
+            disabled={disabled}
+            isWinningSquare={winningCombo?.includes(i)}
+          />
+        ))}
+      </motion.div>
+      <div className="mt-4 text-center text-slate-500 text-xs">
+        ចុចឱ្យជាប់ដើម្បីអូសមើលក្រឡា (Hold and drag to scroll the board)
+      </div>
     </div>
   );
 }

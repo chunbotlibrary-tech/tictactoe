@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Copy, LogOut, RefreshCw, Users, Shield, Github, Share2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -119,8 +119,33 @@ export default function App() {
     }
   };
 
+  const getMemeMessage = useCallback(() => {
+    if (!gameState || gameState.status !== 'won') return "";
+    const isWinner = gameState.winner === playerSymbol;
+    
+    const winMessages = [
+      "អបអរសាទរអ្នកឈ្នះសត្រូវរបស់អ្នកហើយ 🏆",
+      "ឈ្នះរហូតបាយចិត្តណាស់! 🍚🥢",
+      "ខ្លាំងមែនទែន! មិនមែនលេងសើចទេ 😎",
+      "ឈ្នះបានសម្រេច! ដៃគូសុំចុះចាញ់ហើយ ✨"
+    ];
+    
+    const loseMessages = [
+      "អន់ហាលេងចាញ់គេ! 🤪",
+      "លេងចាញ់គេញឹកអញ្ចឹងស្រឡាញ់គេទៅបានឈ្នះ 💖",
+      "សំណាងក្រោយទៀតចុះ កុំទាន់អស់សង្ឃឹម! 💪",
+      "បើចាញ់ញឹកពេក ទៅរៀនថែមសិនទៅ! 📚"
+    ];
+    
+    const list = isWinner ? winMessages : loseMessages;
+    // Simple way to get a stable message for the current game result
+    // We use the roomId and the status to help keep it stable during the same result
+    const seed = (roomId || "").length + (gameState.scores.X + gameState.scores.O);
+    return list[seed % list.length];
+  }, [gameState, playerSymbol, roomId]);
+
   return (
-    <div className="min-h-screen flex flex-col p-4 sm:p-6 max-w-5xl mx-auto w-full bg-slate-950 text-slate-200 selection:bg-sky-500/30">
+    <div className="min-h-screen flex flex-col p-4 sm:p-6 w-full bg-slate-950 text-slate-200 selection:bg-sky-500/30">
       {/* Global Error Banner */}
       <AnimatePresence>
         {error && (
@@ -146,14 +171,14 @@ export default function App() {
       </AnimatePresence>
 
       {!roomId ? (
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex-1 flex items-center justify-center max-w-4xl mx-auto w-full">
           <Lobby onCreateRoom={handleCreate} onJoinRoom={handleJoin} loading={loading} />
         </div>
       ) : (
-        <>
+        <div className="max-w-[1400px] mx-auto w-full flex-1 flex flex-col">
           {/* Header */}
-          <header className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8">
-            <div className="flex items-center gap-4">
+          <header className="flex flex-col lg:flex-row justify-between items-center gap-6 mb-8">
+            <div className="flex items-center gap-4 w-full lg:w-auto">
               <button 
                 onClick={handleLeave}
                 className="p-3 bg-slate-900 border border-slate-800 rounded-xl hover:text-pink-500 transition-colors"
@@ -164,33 +189,35 @@ export default function App() {
               </button>
               <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
                 <h1 className="text-4xl sm:text-5xl font-black tracking-tighter italic" id="app-title">
-                  NEON<span className="text-sky-400 font-black">MULTIPLAYER</span>
+                  TicTac<span className="text-sky-400 font-black">Toe</span> 🇰🇭
                 </h1>
-                <div className="flex items-center gap-2 px-3 py-1 bg-slate-800/40 rounded-full border border-slate-700/50 text-[10px] mt-2">
+                <div className="flex items-center justify-center sm:justify-start gap-2 px-3 py-1 bg-slate-800/40 rounded-full border border-slate-700/50 text-[10px] mt-2">
                    <span className="text-slate-400 font-medium tracking-wider">GOMOKU 15x15</span>
                    <span className="text-slate-700">|</span>
                    <span className="text-sky-400/80 font-bold uppercase tracking-tight">5 in a row wins</span>
                 </div>
-                
-                <div className="flex items-center gap-2 mt-4 bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl">
-                  <span className="text-slate-500 text-xs font-bold uppercase tracking-widest">លេខកូដបន្ទប់ (Room Code):</span>
-                  <span className="text-lg font-mono font-bold tracking-tighter text-white">{roomId}</span>
-                  <button onClick={copyRoomId} className="ml-2 p-1 hover:text-sky-400 text-slate-500 transition-colors" title="Copy Code">
-                    <Copy className="w-4 h-4" />
-                  </button>
-                </div>
               </div>
             </div>
 
-            <div className="flex gap-2 bg-slate-900/50 border border-slate-800 p-1 rounded-2xl">
-               <div className={`px-4 py-2 rounded-xl flex items-center gap-3 transition-all ${playerSymbol === 'X' ? 'bg-sky-500/10 border border-sky-500/20 text-sky-400' : 'opacity-40'}`}>
-                  <div className="w-2 h-2 rounded-full bg-sky-500 animate-pulse"></div>
-                  <span className="font-bold">PLAYER X</span>
-               </div>
-               <div className={`px-4 py-2 rounded-xl flex items-center gap-3 transition-all ${playerSymbol === 'O' ? 'bg-pink-500/10 border border-pink-500/20 text-pink-400' : 'opacity-40'}`}>
-                  <div className="w-2 h-2 rounded-full bg-pink-500 animate-pulse"></div>
-                  <span className="font-bold">PLAYER O</span>
-               </div>
+            <div className="flex flex-col md:flex-row items-center gap-4 w-full lg:w-auto">
+              <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl w-full md:w-auto justify-center">
+                <span className="text-slate-500 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">ROOM ID:</span>
+                <span className="text-lg font-mono font-bold tracking-tighter text-white">{roomId}</span>
+                <button onClick={copyRoomId} className="ml-2 p-1 hover:text-sky-400 text-slate-500 transition-colors" title="Copy Code">
+                  <Copy className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex gap-2 bg-slate-900/50 border border-slate-800 p-1 rounded-2xl w-full md:w-auto justify-center">
+                <div className={`px-4 py-1.5 rounded-xl flex items-center gap-2 transition-all ${playerSymbol === 'X' ? 'bg-sky-500/10 border border-sky-500/20 text-sky-400' : 'opacity-40'}`}>
+                  <div className="w-2 h-2 rounded-full bg-sky-500"></div>
+                  <span className="font-bold text-xs">PLAYER X</span>
+                </div>
+                <div className={`px-4 py-1.5 rounded-xl flex items-center gap-2 transition-all ${playerSymbol === 'O' ? 'bg-pink-500/10 border border-pink-500/20 text-pink-400' : 'opacity-40'}`}>
+                  <div className="w-2 h-2 rounded-full bg-pink-500"></div>
+                  <span className="font-bold text-xs">PLAYER O</span>
+                </div>
+              </div>
             </div>
           </header>
 
@@ -199,146 +226,141 @@ export default function App() {
             {loading ? (
               <div className="flex flex-col items-center justify-center gap-4 py-20">
                 <RefreshCw className="w-10 h-10 text-sky-400 animate-spin" />
-                <p className="text-slate-400 font-medium animate-pulse">កំពុងភ្ជាប់ទៅកាន់បន្ទប់លេង... (Connecting...)</p>
+                <p className="text-slate-400 font-medium animate-pulse">កំពុងភ្ជាប់... (Connecting...)</p>
               </div>
             ) : (
               <>
-                {/* Score Board */}
-                {gameState && (
-                  <div className="grid grid-cols-2 gap-3 w-full max-w-sm mb-2">
-                <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl text-center">
-                  <p className="text-slate-500 text-xs font-bold uppercase mb-1">X Wins</p>
-                  <p className="text-3xl font-bold text-sky-400">{gameState.scores.X}</p>
-                </div>
-                <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl text-center">
-                  <p className="text-slate-500 text-xs font-bold uppercase mb-1">O Wins</p>
-                  <p className="text-3xl font-bold text-pink-400">{gameState.scores.O}</p>
-                </div>
-              </div>
-            )}
+                {/* Score Board & Status */}
+                <div className="flex flex-col md:flex-row gap-6 w-full items-center justify-center mb-4">
+                  {gameState && (
+                    <div className="grid grid-cols-2 gap-3 w-full max-w-[300px]">
+                      <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl text-center">
+                        <p className="text-slate-500 text-[10px] font-bold uppercase mb-1">X Wins</p>
+                        <p className="text-2xl font-bold text-sky-400">{gameState.scores.X}</p>
+                      </div>
+                      <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl text-center">
+                        <p className="text-slate-500 text-[10px] font-bold uppercase mb-1">O Wins</p>
+                        <p className="text-2xl font-bold text-pink-400">{gameState.scores.O}</p>
+                      </div>
+                    </div>
+                  )}
 
-            {/* Status Message */}
-            <div className="h-8 flex items-center justify-center">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={gameState?.status + (gameState?.turn || '')}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="text-center font-bold tracking-wide"
-                >
+                  <div className="min-h-[60px] flex items-center justify-center">
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={gameState?.status + (gameState?.turn || '')}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="text-center font-bold tracking-wide"
+                      >
+                        {gameState?.status === 'waiting' && (
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="flex items-center gap-3 text-slate-400">
+                              <Users className="w-5 h-5 animate-pulse" />
+                              <span className="text-lg">កំពុងរង់ចាំដៃគូ...</span>
+                            </div>
+                          </div>
+                        )}
+                        {gameState?.status === 'active' && (
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="px-4 py-1.5 bg-slate-800/80 rounded-full border border-slate-700 shadow-lg mb-2">
+                              <span className={`text-sm font-bold ${playerSymbol === 'X' ? 'text-sky-400' : playerSymbol === 'O' ? 'text-pink-400' : 'text-slate-500'}`}>
+                                {playerSymbol === 'X' ? "អ្នកគឺជាកីឡាករ X" : playerSymbol === 'O' ? "អ្នកគឺជាកីឡាករ O" : "អ្នកជាអ្នកទស្សនា"}
+                              </span>
+                            </div>
+                            
+                            <span className={`text-xl ${gameState.turn === 'X' ? 'text-sky-400' : 'text-pink-400'}`}>
+                              {gameState.turn === playerSymbol ? "✨ ដល់វេនអ្នកហើយ" : `រង់ចាំវេន ${gameState.turn}...`}
+                            </span>
+                          </div>
+                        )}
+                        {gameState?.status === 'won' && (
+                          <div className="flex flex-col items-center gap-4">
+                            <span className="text-yellow-400 text-3xl font-black uppercase tracking-widest drop-shadow-[0_0_15px_rgba(234,179,8,0.5)]">
+                              {gameState.winner === playerSymbol ? "🏆 អ្នកឈ្នះហើយ! 🏆" : "ដៃគូជាអ្នកឈ្នះ!"}
+                            </span>
+                            <motion.div 
+                              initial={{ scale: 0.8, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              className="px-6 py-4 bg-slate-900/80 border-2 border-yellow-500/30 rounded-2xl shadow-[0_0_30px_rgba(234,179,8,0.15)] max-w-xs"
+                            >
+                              <p className="text-lg font-bold text-center text-slate-200 leading-relaxed">
+                                {getMemeMessage()}
+                              </p>
+                            </motion.div>
+                          </div>
+                        )}
+                        {gameState?.status === 'draw' && (
+                          <span className="text-slate-400 text-2xl uppercase tracking-widest">ស្មើគ្នា! (DRAW)</span>
+                        )}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+                </div>
+
+                {/* Game Board Container */}
+                <div className="relative w-full flex justify-center items-center z-10 px-2 sm:px-6">
+                  <div className="absolute -inset-10 bg-gradient-to-r from-sky-500/5 to-pink-500/5 rounded-full blur-[100px] pointer-events-none"></div>
+                  <Board 
+                    board={gameState?.board || Array(BOARD_SIZE * BOARD_SIZE).fill('')} 
+                    onSquareClick={makeMove}
+                    disabled={gameState?.status !== 'active' || gameState.turn !== playerSymbol}
+                    winningCombo={winningCombo}
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md mt-4">
+                  {gameState && (gameState.status === 'won' || gameState.status === 'draw') && (
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={resetGame}
+                      className="w-full py-4 px-8 bg-sky-600 hover:bg-sky-500 text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-xl"
+                    >
+                      <RefreshCw className="w-5 h-5" />
+                      លេងម្ដងទៀត (Play Again)
+                    </motion.button>
+                  )}
+
                   {gameState?.status === 'waiting' && (
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="flex items-center gap-3 text-slate-400">
-                        <Users className="w-5 h-5 animate-pulse" />
-                        កំពុងរង់ចាំដៃគូ... (Waiting for opponent)
-                      </div>
-                      <p className="text-xs text-slate-500 font-normal">ផ្ញើលេខកូដបន្ទប់ទៅកាន់មិត្តភក្តិដើម្បីលេង</p>
-                    </div>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                         const shareText = `មកលេងហ្គេម Tic Tac Toe ជាមួយខ្ញុំ: ${roomId}\n${window.location.href}`;
+                         if (navigator.share) {
+                           navigator.share({ title: 'Neon Gomoku', text: shareText, url: window.location.href });
+                         } else {
+                           copyRoomId();
+                         }
+                      }}
+                      className="w-full py-4 bg-slate-900 border border-slate-800 text-white rounded-2xl flex items-center justify-center gap-3 hover:bg-slate-800 transition-all font-bold"
+                    >
+                      <Share2 className="w-5 h-5 text-sky-400" />
+                      អញ្ជើញមិត្តភក្តិ (Invite Friend)
+                    </motion.button>
                   )}
-                  {gameState?.status === 'active' && (
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="flex flex-col items-center mb-2 px-4 py-1 bg-slate-800/50 rounded-full border border-slate-700">
-                        <span className="text-[10px] text-slate-400 uppercase tracking-tighter">Your Role / តួនាទី</span>
-                        <span className={`text-lg font-bold ${playerSymbol === 'X' ? 'text-sky-400' : playerSymbol === 'O' ? 'text-pink-400' : 'text-slate-500'}`}>
-                          {playerSymbol === 'X' ? "អ្នកគឺជាកីឡាករ X" : playerSymbol === 'O' ? "អ្នកគឺជាកីឡាករ O" : userId ? "អ្នកជាអ្នកទស្សនា" : "មិនអាចភ្ជាប់ Auth បាន"}
-                        </span>
-                      </div>
-                      
-                      {playerSymbol ? (
-                        <span className={gameState.turn === 'X' ? 'text-sky-400' : 'text-pink-400'}>
-                          {gameState.turn === playerSymbol ? "ដល់វេនអ្នកហើយ (IT'S YOUR TURN)" : `រង់ចាំវេន ${gameState.turn} (WAITING FOR ${gameState.turn}...)`}
-                        </span>
-                      ) : (
-                        <div className="flex flex-col items-center">
-                          <span className="text-slate-500 italic">WATCHING AS SPECTATOR (RE-JOIN TO PLAY)</span>
-                          {!userId && (
-                            <span className="text-[10px] text-red-400 mt-1">កំហុសបណ្តាញ: មិនអាចភ្ជាប់ទៅកាន់ Google Login បានទេ (Network error)</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {gameState?.status === 'won' && (
-                    <span className="text-yellow-400 text-2xl uppercase tracking-widest">
-                      {gameState.winner === playerSymbol ? "✨ អ្នកឈ្នះហើយ! (YOU WIN!) ✨" : "ដៃគូជាអ្នកឈ្នះ (OPPONENT WINS)"}
-                    </span>
-                  )}
-                  {gameState?.status === 'draw' && (
-                    <span className="text-slate-400 text-2xl uppercase tracking-widest">IT'S A DRAW</span>
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </div>
+                </div>
+              </>
+            )}
+          </main>
 
-            {/* Game Board */}
-            <div className="relative group w-full flex justify-center items-center min-h-[300px] z-10">
-              <div className="absolute -inset-4 bg-gradient-to-r from-sky-500/10 to-pink-500/10 rounded-[3rem] blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
-              <Board 
-                board={gameState?.board || Array(BOARD_SIZE * BOARD_SIZE).fill('')} 
-                onSquareClick={makeMove}
-                disabled={gameState?.status !== 'active' || gameState.turn !== playerSymbol}
-                winningCombo={winningCombo}
-              />
+          <footer className="mt-8 py-6 border-t border-slate-900 flex flex-col sm:flex-row justify-between items-center text-slate-600 text-xs gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500 shadow-sm animate-pulse"></div>
+              Server Region: Asia Southeast
             </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
-              {gameState && (gameState.status === 'won' || gameState.status === 'draw') && (
-                <motion.button
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={resetGame}
-                  className="w-full py-4 px-8 bg-sky-600 hover:bg-sky-500 text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-xl shadow-sky-900/20"
-                  id="btn-play-again"
-                >
-                  <RefreshCw className="w-5 h-5" />
-                  Play Again
-                </motion.button>
-              )}
-
-              <AnimatePresence>
-                {gameState?.status === 'waiting' && (
-                  <motion.button
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    onClick={() => {
-                       const shareText = `Join my Tic Tac Toe room: ${roomId}\n${window.location.href}`;
-                       if (navigator.share) {
-                         navigator.share({ title: 'Neon Tic Tac Toe', text: shareText, url: window.location.href })
-                           .catch(() => copyRoomId());
-                       } else {
-                         copyRoomId();
-                       }
-                    }}
-                    className="w-full py-3 border border-slate-700 text-slate-400 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-900 transition-colors"
-                  >
-                    <Share2 className="w-4 h-4" />
-                    Invite Friend
-                  </motion.button>
-                )}
-              </AnimatePresence>
+            <div className="flex items-center gap-6">
+              <span className="font-medium text-slate-500">Supported by Phearoth💖🧑💻</span>
+              <div className="flex items-center gap-2">
+                <Github className="w-3 h-3" /> Source
+              </div>
             </div>
-            </>
-          )}
-        </main>
-      </>
+          </footer>
+        </div>
       )}
-
-      <footer className="mt-auto py-6 border-t border-slate-900 flex flex-col sm:flex-row justify-between items-center text-slate-600 text-sm gap-4">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-500 shadow-sm animate-pulse"></div>
-          Server Region: Asia Southeast
-        </div>
-        <div className="flex items-center gap-6">
-          <a href="#" className="hover:text-slate-400 transition-colors flex items-center gap-2">
-            <Github className="w-4 h-4" /> Source
-          </a>
-          <span>© 2026 Neon Arena</span>
-        </div>
-      </footer>
     </div>
+
   );
 }

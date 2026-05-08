@@ -14,22 +14,22 @@ export function Lobby({ onCreateRoom, onJoinRoom, loading }: LobbyProps) {
 
   const t = {
     en: {
-      title: "TIC TAC TOE",
-      subtitle: "Real-time Neon Arena",
+      title: "TIC TAC TOE 🇰🇭",
+      subtitle: "Gomoku 15x15 Arena",
       create: "Create New Room",
       join: "Join Room",
       placeholder: "ENTER ROOM CODE",
       or: "Or join existing",
-      footer: "Powered by Firebase Real-time Synchronization"
+      footer: "Supported by Phearoth💖🧑💻"
     },
     km: {
-      title: "ទីក តាក់ តូ",
-      subtitle: "កីឡដ្ឋានណេអុង",
+      title: "ទីក តាក់ តូ 🇰🇭",
+      subtitle: "កីឡដ្ឋានណេអុង (Gomoku 15x15)",
       create: "បង្កើតបន្ទប់ថ្មី",
       join: "ចូលរួមបន្ទប់",
       placeholder: "បញ្ចូលលេខកូដ",
       or: "ឬចូលរួមបន្ទប់ដែលមានស្រាប់",
-      footer: "ដំណើរការដោយ Firebase Sync"
+      footer: "គាំទ្រដោយ Phearoth💖🧑💻"
     }
   }[lang];
 
