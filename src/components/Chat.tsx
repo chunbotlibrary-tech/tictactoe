@@ -9,6 +9,16 @@ interface ChatProps {
   playerSymbol: PlayerSymbol | null;
 }
 
+const QUICK_MESSAGES = [
+  "សួស្ដីស្រីស្អាត",
+  "សួស្ដីប្រុសស្អាត",
+  "ខ្ញុំចាប់អារម្មណ៍យើង",
+  "យើងពូកែហើយស្អាតទៀត",
+  "ចង់លេងពីរនាក់រាល់ថ្ងៃ",
+  "ទំនេរថ្មើណាឆាតប្រាប់ផងចង់លេងទៀត",
+  "លេងយូរៗទៅចាប់អារម្មណ៍យើងម៉េចទេ"
+];
+
 export function Chat({ roomId, playerSymbol }: ChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState('');
@@ -27,8 +37,12 @@ export function Chat({ roomId, playerSymbol }: ChatProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputText.trim() && playerSymbol) {
-      sendMessage(inputText);
+    handleSendMessage(inputText);
+  };
+
+  const handleSendMessage = (text: string) => {
+    if (text.trim() && playerSymbol) {
+      sendMessage(text);
       setInputText('');
     }
   };
@@ -111,7 +125,21 @@ export function Chat({ roomId, playerSymbol }: ChatProps) {
             </div>
 
             {/* Input */}
-            <form onSubmit={handleSubmit} className="p-3 border-t border-slate-800 bg-slate-950/50">
+            <form onSubmit={handleSubmit} className="p-3 border-t border-slate-800 bg-slate-950/50 space-y-3">
+              {/* Quick Messages */}
+              <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar scrollbar-hide no-scrollbar">
+                {QUICK_MESSAGES.map((msg, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => handleSendMessage(msg)}
+                    className="whitespace-nowrap px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-full text-[10px] font-medium text-slate-300 transition-colors"
+                  >
+                    {msg}
+                  </button>
+                ))}
+              </div>
+
               <div className="relative flex items-center">
                 <input
                   type="text"

@@ -8,7 +8,8 @@ import {
   orderBy,
   limit,
   deleteDoc,
-  doc
+  doc,
+  getDocs
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { PlayerSymbol, ChatMessage } from '../constants';
@@ -47,28 +48,32 @@ export function useChat(roomId: string | null, playerSymbol: PlayerSymbol | null
     if (!roomId || !playerSymbol || !text.trim()) return;
 
     try {
-      const docRef = await addDoc(collection(db, 'rooms', roomId, 'chats'), {
+      await addDoc(collection(db, 'rooms', roomId, 'chats'), {
         sender: playerSymbol,
         text: text.trim(),
         timestamp: serverTimestamp()
       });
-      
-      // Auto-delete after 15 seconds to fulfill "real-time chat, don't store long"
-      setTimeout(async () => {
-        try {
-          await deleteDoc(doc(db, 'rooms', roomId, 'chats', docRef.id));
-        } catch (err) {
-          console.error("Cleanup failed:", err);
-        }
-      }, 15000);
       
     } catch (err) {
       console.error("Failed to send message:", err);
     }
   }, [roomId, playerSymbol]);
 
+  const clearChat = useCallback(async () => {
+    if (!roomId) return;
+    try {
+      const chatRef = collection(db, 'rooms', roomId, 'chats');
+      const snapshot = await getDocs(chatRef);
+      const deletePromises = snapshot.docs.map(d => deleteDoc(doc(db, 'rooms', roomId, 'chats', d.id)));
+      await Promise.all(deletePromises);
+    } catch (err) {
+      console.error("Failed to clear chat:", err);
+    }
+  }, [roomId]);
+
   return {
     messages,
-    sendMessage
+    sendMessage,
+    clearChat
   };
 }
