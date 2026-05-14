@@ -4,6 +4,13 @@ export const WIN_CONDITION = 5;
 export type GameStatus = 'waiting' | 'active' | 'won' | 'draw';
 export type PlayerSymbol = 'X' | 'O';
 
+export interface ChatMessage {
+  id: string;
+  sender: PlayerSymbol;
+  text: string;
+  timestamp: number;
+}
+
 export interface GameState {
   board: (PlayerSymbol | '')[];
   turn: PlayerSymbol;

@@ -4,6 +4,7 @@ import { Copy, LogOut, RefreshCw, Users, Shield, Github, Share2, Sparkles, HelpC
 import confetti from 'canvas-confetti';
 import { Lobby } from './components/Lobby';
 import { Board } from './components/Board';
+import { Chat } from './components/Chat';
 import { useGame } from './hooks/useGame';
 import { BOARD_SIZE, WIN_CONDITION } from './constants';
 import { isConfigValid } from './lib/firebase';
@@ -451,6 +452,8 @@ export default function App() {
               </>
             )}
           </main>
+
+          {roomId && <Chat roomId={roomId} playerSymbol={playerSymbol} />}
 
           <footer className="mt-4 py-2 border-t border-slate-900 flex flex-col sm:flex-row justify-between items-center text-slate-600 text-[10px] gap-2">
             <div className="flex items-center gap-2">
