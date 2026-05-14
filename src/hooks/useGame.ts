@@ -1,15 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
-  ref, 
-  onValue, 
-  set, 
-  update, 
+  doc, 
+  onSnapshot, 
+  setDoc, 
+  updateDoc, 
   serverTimestamp, 
-  get,
-  child,
-  off
-} from 'firebase/database';
-import { rtdb, auth } from '../lib/firebase';
+  getDoc,
+} from 'firebase/firestore';
+import { db, auth } from '../lib/firebase';
 import { signInAnonymously } from 'firebase/auth';
 import { BOARD_SIZE, WIN_CONDITION, GameState, GameStatus, PlayerSymbol } from '../constants';
 
@@ -109,7 +107,7 @@ export function useGame(roomId: string | null) {
     }
 
     setLoading(true);
-    const roomRef = ref(rtdb, `rooms/${roomId}`);
+    const roomRef = doc(db, 'rooms', roomId);
 
     // Add a safety timeout to stop loading if connection is too slow/blocked
     const timeoutId = setTimeout(() => {
@@ -122,10 +120,10 @@ export function useGame(roomId: string | null) {
       });
     }, 10000);
     
-    const unsub = onValue(roomRef, (snapshot) => {
+    const unsub = onSnapshot(roomRef, (snapshot) => {
       clearTimeout(timeoutId);
       if (snapshot.exists()) {
-        const data = snapshot.val() as GameState;
+        const data = snapshot.data() as GameState;
         setGameState(data);
       } else {
         setError("រកមិនឃើញបន្ទប់លេង (Room not found)");
@@ -137,7 +135,7 @@ export function useGame(roomId: string | null) {
       setLoading(false);
     });
 
-    return () => off(roomRef, 'value', unsub);
+    return () => unsub();
   }, [roomId, handleError]);
 
   const createRoom = useCallback(async () => {
@@ -145,7 +143,7 @@ export function useGame(roomId: string | null) {
     if (!currentUserId) return null;
 
     const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const roomRef = ref(rtdb, `rooms/${newRoomId}`);
+    const roomRef = doc(db, 'rooms', newRoomId);
     
     const initialState: GameState = {
       board: Array(BOARD_SIZE * BOARD_SIZE).fill(''),
@@ -154,12 +152,12 @@ export function useGame(roomId: string | null) {
       players: { X: currentUserId },
       winner: null,
       scores: { X: 0, O: 0 },
-      createdAt: serverTimestamp(),
-      lastMoveAt: serverTimestamp()
+      createdAt: serverTimestamp() as any,
+      lastMoveAt: serverTimestamp() as any
     };
 
     try {
-      await set(roomRef, initialState);
+      await setDoc(roomRef, initialState);
       return newRoomId;
     } catch (err) {
       handleError(err, OperationType.CREATE, `rooms/${newRoomId}`);
@@ -171,26 +169,26 @@ export function useGame(roomId: string | null) {
     const currentUserId = await ensureAuth();
     if (!currentUserId) return false;
 
-    const roomRef = ref(rtdb, `rooms/${targetRoomId}`);
+    const roomRef = doc(db, 'rooms', targetRoomId);
     
     try {
-      const snap = await get(roomRef);
+      const snap = await getDoc(roomRef);
       if (!snap.exists()) {
         setError("Room doesn't exist");
         return false;
       }
       
-      const data = snap.val() as GameState;
+      const data = snap.data() as GameState;
       
-      if (data.players.X === currentUserId || data.players.O === currentUserId) return true;
+      if (data.players.X === currentUserId || (data.players.O === currentUserId)) return true;
       
       if (data.players.O) {
         setError("Room is full");
         return false;
       }
 
-      await update(roomRef, {
-        'players/O': currentUserId,
+      await updateDoc(roomRef, {
+        'players.O': currentUserId,
         status: 'active',
         lastMoveAt: serverTimestamp()
       });
@@ -291,7 +289,7 @@ export function useGame(roomId: string | null) {
 
     try {
       console.log("[makeMove] Updating database with new move...");
-      await update(ref(rtdb, `rooms/${roomId}`), {
+      await updateDoc(doc(db, 'rooms', roomId), {
         board: newBoard,
         turn: nextTurn,
         status: newStatus,
@@ -310,7 +308,7 @@ export function useGame(roomId: string | null) {
     if (!roomId || !gameState) return;
     
     try {
-      await update(ref(rtdb, `rooms/${roomId}`), {
+      await updateDoc(doc(db, 'rooms', roomId), {
         board: Array(BOARD_SIZE * BOARD_SIZE).fill(''),
         turn: 'X',
         status: 'active',

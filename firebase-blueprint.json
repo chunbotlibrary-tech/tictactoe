@@ -1,5 +1,26 @@
 {
+  "firestore": {
+    "/rooms/{roomId}": {
+      "schema": "Room",
+      "description": "Game rooms collection"
+    },
+    "/rooms/{roomId}/chats/{chatId}": {
+      "schema": "ChatMessage",
+      "description": "Real-time game chat messages"
+    }
+  },
   "entities": {
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "A chat message sent during a game",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "sender": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["text", "sender", "timestamp"]
+    },
     "Room": {
       "title": "Room",
       "description": "A multiplayer game room for Tic Tac Toe",
@@ -49,12 +70,5 @@
         }
       },
       "required": ["board", "turn", "status", "players", "scores", "createdAt"]
-    }
-  },
-  "firestore": {
-    "/rooms/{roomId}": {
-      "schema": "Room",
-      "description": "Game rooms collection"
-    }
   }
 }

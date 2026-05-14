@@ -1,12 +1,8 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Global Safety Net
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // Helper Functions
+    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
@@ -23,67 +19,45 @@ service cloud.firestore {
       return resource.data;
     }
 
-    function isPlayer(roomId) {
-      let room = get(/databases/$(database)/documents/rooms/$(roomId)).data;
-      return room.players.X == request.auth.uid || room.players.O == request.auth.uid;
-    }
-
-    function isValidRoom(data) {
-      return data.board is list 
-        && data.board.size() == 9
-        && data.turn in ['X', 'O']
-        && data.status in ['waiting', 'active', 'won', 'draw']
-        && data.players.X is string
-        && (data.players.keys().hasOnly(['X']) || data.players.keys().hasOnly(['X', 'O']))
-        && data.scores.X is int && data.scores.X >= 0
-        && data.scores.O is int && data.scores.O >= 0;
-    }
-
+    // Rooms collection
     match /rooms/{roomId} {
       allow read: if isSignedIn();
       
-      allow create: if isSignedIn() 
-        && isValidId(roomId)
-        && isValidRoom(incoming())
-        && incoming().players.X == request.auth.uid
-        && incoming().status == 'waiting'
-        && incoming().board.all(cell => cell == '');
+      allow create: if isSignedIn() && isValidId(roomId) &&
+        incoming().players.X == request.auth.uid &&
+        incoming().status == 'waiting' &&
+        incoming().board.size() == 225; // 15x15
 
-      allow update: if isSignedIn()
-        && isValidRoom(incoming())
-        && (
-          // Action: Join Room
-          (existing().status == 'waiting' 
-           && !('O' in existing().players)
-           && incoming().players.O == request.auth.uid
-           && incoming().status == 'active'
-           && incoming().diff(existing()).affectedKeys().hasOnly(['players', 'status', 'lastMoveAt']))
-          
-          ||
-          
-          // Action: Make Move
-          (existing().status == 'active'
-           && (
-             (existing().turn == 'X' && existing().players.X == request.auth.uid) ||
-             (existing().turn == 'O' && existing().players.O == request.auth.uid)
-           )
-           && incoming().players == existing().players
-           && incoming().scores.X >= existing().scores.X
-           && incoming().scores.O >= existing().scores.O
-           && incoming().diff(existing()).affectedKeys().hasAny(['board', 'turn', 'status', 'winner', 'scores', 'lastMoveAt']))
-          
-          ||
-          
-          // Action: Reset Game
-          ((existing().status == 'won' || existing().status == 'draw')
-           && (existing().players.X == request.auth.uid || existing().players.O == request.auth.uid)
-           && incoming().board.all(cell => cell == '')
-           && incoming().status == 'active'
-           && incoming().players == existing().players
-           && incoming().scores == existing().scores)
-        );
+      allow update: if isSignedIn() && (
+        // Join room
+        (existing().status == 'waiting' && 
+         incoming().diff(existing()).affectedKeys().hasOnly(['players', 'status', 'lastMoveAt']) &&
+         incoming().players.O == request.auth.uid &&
+         incoming().status == 'active') ||
+        
+        // Make move
+        (existing().status == 'active' &&
+         (existing().players.X == request.auth.uid || existing().players.O == request.auth.uid) &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['board', 'turn', 'status', 'winner', 'scores', 'lastMoveAt'])) ||
+         
+        // Reset game
+        ((existing().players.X == request.auth.uid || existing().players.O == request.auth.uid) &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['board', 'turn', 'status', 'winner', 'lastMoveAt']))
+      );
 
-      allow delete: if false; // Rooms are persistent for now
+      // Chat sub-collection
+      match /chats/{chatId} {
+        allow list: if isSignedIn();
+        allow create: if isSignedIn() && 
+          incoming().sender in ['X', 'O'] &&
+          incoming().text is string && incoming().text.size() < 500;
+        allow delete: if isSignedIn(); // Allow cleanup (auto-delete)
+      }
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
